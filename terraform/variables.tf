@@ -1,23 +1,20 @@
 variable "resource_group_name" {
-  description = "Name of the Azure Resource Group"
-  type        = string
-  default     = "project"
+  default = "project"
 }
 
 variable "location" {
-  description = "Azure region to deploy the resources in"
-  type        = string
-  default     = "East US"
+  default = "East US"
+}
+
+variable "vm_size" {
+  default = "Standard_B1s"
 }
 
 variable "admin_username" {
-  description = "Admin username for the virtual machine"
-  type        = string
-  default     = "azureuser"
+  default = "azureuser"
 }
 
-variable "public_key_path" {
-  description = "Path to your public SSH key"
-  type        = string
-  default     = "~/.ssh/id_rsa.pub"
+variable "windows_username" {
+  description = "Windows username for path resolution"
+  default     = "pc"
 }

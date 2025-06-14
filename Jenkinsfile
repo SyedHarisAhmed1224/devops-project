@@ -1,40 +1,59 @@
 pipeline {
   agent any
+  environment {
+    TF_DIR = "/workspace/terraform"
+    INVENTORY_FILE = "inventory"
+    ARM_CLIENT_ID       = 'c58d071f-7512-46a8-8538-41b05534e5b0'
+    ARM_CLIENT_SECRET   = '0HD8Q~1B54~D-W6rHKODZmXXvP_UY5UbSRTzrcOu'
+    ARM_SUBSCRIPTION_ID = 'f32912ed-d29f-4020-8bc7-0d5b7cf7e7f6'
+    ARM_TENANT_ID       = 'a0b05d0e-54f3-4dbb-bdbe-9ec3982b25e2'
+  }
 
   stages {
     stage('Terraform Init') {
       steps {
-        dir('terraform') {
+        dir("/workspace/terraform") {
           sh 'terraform init'
         }
       }
     }
+
     stage('Terraform Apply') {
       steps {
-        dir('terraform') {
+        dir("/workspace/terraform") {
           sh 'terraform apply -auto-approve'
         }
       }
     }
-    stage('Extract IP') {
+
+    stage('Get IP') {
       steps {
         script {
-          def ip = sh(script: "terraform -chdir=terraform output -raw public_ip", returnStdout: true).trim()
-          writeFile file: 'inventory.ini', text: "[web]\n${ip} ansible_user=azureuser ansible_ssh_private_key_file=~/.ssh/id_rsa"
+          env.VM_IP = sh(script: "cd ${env.TF_DIR} && terraform output -raw public_ip", returnStdout: true).trim()
+          echo "Extracted Public IP: ${env.VM_IP}"
+    
+          writeFile file: "${env.INVENTORY_FILE}", text: """[web]
+    ${env.VM_IP} ansible_user=azureuser ansible_ssh_private_key_file=/root/.ssh/id_rsa
+    """
         }
       }
     }
-    stage('Configure with Ansible') {
+
+    stage('Run Ansible') {
       steps {
-        sh 'ansible-playbook -i inventory.ini ansible/install_web.yml'
+        sshagent(['ansible_ssh_key']) {
+          sh '''
+            ANSIBLE_HOST_KEY_CHECKING=False \
+            ansible-playbook -i inventory /workspace/ansible/install_web.yml
+          '''
+        }
       }
     }
-    stage('Test Deployment') {
+
+    stage('Verify') {
       steps {
-        script {
-          def ip = readFile('inventory.ini').readLines()[1].split()[0]
-          sh "curl http://${ip}"
-        }
+        sh 'echo "Verifying deployed web app"'
+        sh "curl http://${env.VM_IP}"
       }
     }
   }

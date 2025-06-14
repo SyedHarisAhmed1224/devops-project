@@ -1,6 +1,5 @@
----
 - hosts: all
-  become: yes
+  become: true
   tasks:
     - name: Install Apache
       apt:
@@ -8,7 +7,13 @@
         state: present
         update_cache: yes
 
-    - name: Copy web page
+    - name: Start Apache
+      systemd:
+        name: apache2
+        state: started
+        enabled: true
+
+    - name: Deploy index.html
       copy:
         src: ../app/index.html
         dest: /var/www/html/index.html
